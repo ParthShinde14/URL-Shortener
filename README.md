@@ -1,16 +1,25 @@
 # Snip — URL Shortener
 
-A full-stack URL shortener built with Node.js, MySQL, Redis, and React.
+A full-stack URL shortener built with React, Node.js, Express, MySQL, and Redis. Paste any long URL and get a short one back instantly. Track clicks, set expiry dates, and manage all your links from a clean dashboard.
+
+## Screenshots
+
+### Home Page
+
+![Home Page](assets/home.png)
+
+### Analytics
+
+![Analytics](assets/analytics.png)
 
 ## Tech Stack
 
-| Layer | Tech |
-|---|---|
+| Layer    | Tech                        |
+| -------- | --------------------------- |
 | Frontend | React + Vite + Tailwind CSS |
-| Backend | Node.js + Express |
-| Database | MySQL |
-| Cache | Redis |
-| Deploy | Vercel (frontend) + Railway (backend + DB) |
+| Backend  | Node.js + Express           |
+| Database | MySQL                       |
+| Cache    | Redis                       |
 
 ## Features
 
@@ -25,23 +34,56 @@ A full-stack URL shortener built with Node.js, MySQL, Redis, and React.
 
 ```
 url-shortener/
+├── README.md
+├── docker-compose.yml
+├── .gitignore
+│
 ├── backend/
+│   ├── package.json
+│   ├── .env.example
 │   └── src/
-│       ├── config/       # DB + Redis connections
-│       ├── controllers/  # Business logic
-│       ├── middleware/   # Rate limiter
-│       ├── routes/       # Express routes
-│       └── index.js      # Entry point
+│       ├── index.js                  # Entry point
+│       ├── config/
+│       │   ├── db.js                 # MySQL connection pool
+│       │   └── redis.js              # Redis client
+│       ├── controllers/
+│       │   └── url.controller.js     # Business logic
+│       ├── routes/
+│       │   └── url.routes.js         # API routes
+│       └── middleware/
+│           └── rateLimit.js          # Rate limiter
+│
 └── frontend/
+    ├── package.json
+    ├── vite.config.js
+    ├── tailwind.config.js
+    ├── index.html
     └── src/
-        ├── components/   # React components
-        ├── hooks/        # API helpers
-        └── App.jsx
+        ├── App.jsx
+        ├── main.jsx
+        ├── index.css
+        ├── hooks/
+        │   └── useApi.js             # API calls
+        └── components/
+            ├── ShortenForm.jsx       # URL input form
+            ├── ResultCard.jsx        # Shortened link display
+            └── LinkTable.jsx         # Dashboard table
 ```
+
+## API Endpoints
+
+| Method   | Endpoint           | Description                |
+| -------- | ------------------ | -------------------------- |
+| `POST`   | `/api/shorten`     | Shorten a URL              |
+| `GET`    | `/:code`           | Redirect to original URL   |
+| `GET`    | `/api/links`       | Get all links              |
+| `DELETE` | `/api/links/:code` | Delete a link              |
+| `GET`    | `/api/stats/:code` | Get click stats for a link |
 
 ## Setup
 
 ### Prerequisites
+
 - Node.js 18+
 - MySQL running locally
 - Redis running locally (optional — app works without it)
@@ -51,8 +93,7 @@ url-shortener/
 ```bash
 cd backend
 npm install
-cp .env.example .env
-# Fill in your MySQL credentials in .env
+cp .env.example .env    # Fill in your MySQL credentials in .env
 npm run dev
 ```
 
@@ -68,10 +109,18 @@ Open http://localhost:5173
 
 ## How It Works
 
-1. User pastes a URL → `POST /api/shorten` generates a 6-char nanoid code
-2. Code + URL saved to MySQL
-3. Result also cached in Redis with 1 hour TTL
-4. When someone visits `/:code`:
-   - Redis checked first (fast path, ~1ms)
-   - If miss → MySQL lookup → cache it → redirect
-   - Click count incremented in DB
+Shorten a URL
+
+1. User pastes a long URL into the form
+2. Frontend sends POST /api/shorten to the backend
+3. Express validates the URL and generates a 6-char nanoid code
+4. The mapping is saved to MySQL with optional expiry
+5. The result is also written to Redis cache (1 hour TTL)
+6. The short URL is returned and displayed to the user
+
+Redirect
+
+1. Someone visits yoursite.com/abc123
+2. Express checks Redis first — cache hit = instant redirect (~1ms)
+3. If not cached → look up MySQL → cache it → redirect
+4. Click count is incremented in the database
